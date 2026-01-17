@@ -39,7 +39,7 @@ export default function LoginPage() {
     setIsLoading(true);
     
     // Attempt login
-    const success = login(email, password, activeTab);
+    const success = await login(email, password, activeTab);
     
     if (success) {
       toast.success('Login successful!');

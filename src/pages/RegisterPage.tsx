@@ -56,8 +56,8 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     
-    // Attempt registration
-    const success = register(name, email, password, location, activeTab);
+    // Attempt registration with specialization for doctors
+    const success = await register(name, email, password, location, activeTab, specialization || undefined);
     
     if (success) {
       toast.success('Registration successful! Welcome to HealthCare.');

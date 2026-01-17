@@ -1,18 +1,19 @@
 /**
  * Authentication Context
  * Manages user authentication state across the application
- * Uses localStorage for persistence (simple approach for beginners)
+ * Uses Supabase for persistence
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole, Patient } from '@/types';
+import { User, UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 // Context type definition
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, role: UserRole) => boolean;
-  register: (name: string, email: string, password: string, location: string, role: UserRole) => boolean;
+  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  register: (name: string, email: string, password: string, location: string, role: UserRole, specialization?: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -20,13 +21,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
-  login: () => false,
-  register: () => false,
+  login: async () => false,
+  register: async () => false,
   logout: () => {},
 });
 
-// Storage keys
-const USERS_KEY = 'healthcare_users';
+// Storage key for current user session
 const CURRENT_USER_KEY = 'healthcare_current_user';
 
 // Props for the provider
@@ -51,88 +51,155 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
-   * Get all registered users from localStorage
-   */
-  const getUsers = (): (Patient & { password: string; role: UserRole })[] => {
-    const users = localStorage.getItem(USERS_KEY);
-    return users ? JSON.parse(users) : [];
-  };
-
-  /**
-   * Save users to localStorage
-   */
-  const saveUsers = (users: (Patient & { password: string; role: UserRole })[]) => {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  };
-
-  /**
    * Login function
-   * Validates credentials and sets the current user
+   * Validates credentials against the database
    */
-  const login = (email: string, password: string, role: UserRole): boolean => {
-    const users = getUsers();
-    const foundUser = users.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && 
-           u.password === password && 
-           u.role === role
-    );
+  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+    try {
+      // Simple password hash for demo (in production, use proper hashing on backend)
+      const passwordHash = btoa(password);
 
-    if (foundUser) {
-      const userData: User = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: foundUser.role,
-      };
-      setUser(userData);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
-      return true;
+      if (role === 'doctor') {
+        const { data, error } = await supabase
+          .from('doctors')
+          .select('id, name, email')
+          .eq('email', email.toLowerCase())
+          .eq('password_hash', passwordHash)
+          .single();
+
+        if (error || !data) return false;
+
+        const userData: User = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: 'doctor',
+        };
+        setUser(userData);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+        return true;
+      } else {
+        const { data, error } = await supabase
+          .from('patients')
+          .select('id, name, email')
+          .eq('email', email.toLowerCase())
+          .eq('password_hash', passwordHash)
+          .single();
+
+        if (error || !data) return false;
+
+        const userData: User = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: 'patient',
+        };
+        setUser(userData);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+        return true;
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      return false;
     }
-    return false;
   };
 
   /**
    * Register function
-   * Creates a new user account
+   * Creates a new user account in the database
    */
-  const register = (
-    name: string, 
-    email: string, 
-    password: string, 
-    location: string, 
-    role: UserRole
-  ): boolean => {
-    const users = getUsers();
-    
-    // Check if email already exists
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    location: string,
+    role: UserRole,
+    specialization?: string
+  ): Promise<boolean> => {
+    try {
+      // Simple password hash for demo (in production, use proper hashing on backend)
+      const passwordHash = btoa(password);
+
+      if (role === 'doctor') {
+        // Check if email already exists
+        const { data: existing } = await supabase
+          .from('doctors')
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .single();
+
+        if (existing) return false;
+
+        // Insert new doctor
+        const { data, error } = await supabase
+          .from('doctors')
+          .insert({
+            name,
+            email: email.toLowerCase(),
+            password_hash: passwordHash,
+            location,
+            specialization: specialization || 'General Practice',
+          })
+          .select('id, name, email')
+          .single();
+
+        if (error || !data) {
+          console.error('Doctor registration error:', error);
+          return false;
+        }
+
+        // Auto-login after registration
+        const userData: User = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: 'doctor',
+        };
+        setUser(userData);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+        return true;
+      } else {
+        // Check if email already exists
+        const { data: existing } = await supabase
+          .from('patients')
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .single();
+
+        if (existing) return false;
+
+        // Insert new patient
+        const { data, error } = await supabase
+          .from('patients')
+          .insert({
+            name,
+            email: email.toLowerCase(),
+            password_hash: passwordHash,
+            location,
+          })
+          .select('id, name, email')
+          .single();
+
+        if (error || !data) {
+          console.error('Patient registration error:', error);
+          return false;
+        }
+
+        // Auto-login after registration
+        const userData: User = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: 'patient',
+        };
+        setUser(userData);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+        return true;
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
       return false;
     }
-
-    // Create new user
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name,
-      email,
-      password,
-      location,
-      role,
-    };
-
-    // Save to storage
-    saveUsers([...users, newUser]);
-
-    // Auto-login after registration
-    const userData: User = {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-    };
-    setUser(userData);
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
-
-    return true;
   };
 
   /**
