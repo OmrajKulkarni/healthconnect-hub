@@ -14,10 +14,165 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          created_at: string
+          date: string
+          doctor_id: string
+          id: string
+          patient_id: string
+          status: string | null
+          time: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          doctor_id: string
+          id?: string
+          patient_id: string
+          status?: string | null
+          time: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          doctor_id?: string
+          id?: string
+          patient_id?: string
+          status?: string | null
+          time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctors: {
+        Row: {
+          available_timings: string[] | null
+          created_at: string
+          email: string
+          id: string
+          location: string
+          name: string
+          password_hash: string
+          rating: number | null
+          specialization: string
+          updated_at: string
+        }
+        Insert: {
+          available_timings?: string[] | null
+          created_at?: string
+          email: string
+          id?: string
+          location: string
+          name: string
+          password_hash: string
+          rating?: number | null
+          specialization: string
+          updated_at?: string
+        }
+        Update: {
+          available_timings?: string[] | null
+          created_at?: string
+          email?: string
+          id?: string
+          location?: string
+          name?: string
+          password_hash?: string
+          rating?: number | null
+          specialization?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          location: string
+          name: string
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          location: string
+          name: string
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          location?: string
+          name?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      doctors_public: {
+        Row: {
+          available_timings: string[] | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          location: string | null
+          name: string | null
+          rating: number | null
+          specialization: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          available_timings?: string[] | null
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          location?: string | null
+          name?: string | null
+          rating?: number | null
+          specialization?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          available_timings?: string[] | null
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          location?: string | null
+          name?: string | null
+          rating?: number | null
+          specialization?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

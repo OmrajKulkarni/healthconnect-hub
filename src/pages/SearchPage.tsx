@@ -3,38 +3,35 @@
  * Allows patients to search for doctors by symptoms and location
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { SearchForm } from '@/components/search/SearchForm';
 import { DoctorList } from '@/components/doctors/DoctorList';
-import { searchDoctors, doctors } from '@/data/doctors';
-import { Doctor, SearchFilters } from '@/types';
+import { useDoctors, useSearchDoctors } from '@/hooks/useDoctors';
+import { SearchFilters } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Stethoscope, Users } from 'lucide-react';
 
 export default function SearchPage() {
-  // State for search results
-  const [results, setResults] = useState<Doctor[]>([]);
+  // Fetch all doctors from database
+  const { doctors: allDoctors, loading: loadingAll } = useDoctors();
+  const { results, loading: searching, searchDoctors } = useSearchDoctors();
+  
+  // State for search
   const [hasSearched, setHasSearched] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [currentSearch, setCurrentSearch] = useState<SearchFilters | null>(null);
 
   // Handle search
-  const handleSearch = (filters: SearchFilters) => {
-    setIsLoading(true);
+  const handleSearch = async (filters: SearchFilters) => {
     setCurrentSearch(filters);
-    
-    // Simulate a small delay for better UX
-    setTimeout(() => {
-      const searchResults = searchDoctors(
-        filters.symptoms, 
-        filters.location === 'all' ? '' : filters.location
-      );
-      setResults(searchResults);
-      setHasSearched(true);
-      setIsLoading(false);
-    }, 300);
+    setHasSearched(true);
+    await searchDoctors(
+      filters.symptoms, 
+      filters.location === 'all' ? '' : filters.location
+    );
   };
+
+  const isLoading = searching || loadingAll;
 
   return (
     <Layout>
@@ -57,7 +54,7 @@ export default function SearchPage() {
         {/* Search Form */}
         <div className="max-w-4xl mx-auto mb-8">
           <div className="bg-card border rounded-xl p-6 shadow-sm">
-            <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+            <SearchForm onSearch={handleSearch} isLoading={searching} />
           </div>
         </div>
 
@@ -91,25 +88,32 @@ export default function SearchPage() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <DoctorList doctors={results} isSearching={hasSearched} />
-          )}
-
-          {/* Show all doctors if no search performed */}
-          {!hasSearched && (
-            <div className="mt-8">
-              <div className="flex items-center gap-2 mb-6">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <span className="font-medium">
-                  All Available Doctors ({doctors.length})
-                </span>
-              </div>
-              <DoctorList doctors={doctors.slice(0, 9)} />
-              {doctors.length > 9 && (
-                <p className="text-center text-muted-foreground mt-6">
-                  Search above to see more doctors matching your needs
-                </p>
+            <>
+              {hasSearched ? (
+                <DoctorList doctors={results} isSearching={hasSearched} />
+              ) : (
+                /* Show all doctors if no search performed */
+                <div className="mt-8">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">
+                      All Available Doctors ({allDoctors.length})
+                    </span>
+                  </div>
+                  <DoctorList doctors={allDoctors.slice(0, 9)} />
+                  {allDoctors.length > 9 && (
+                    <p className="text-center text-muted-foreground mt-6">
+                      Search above to see more doctors matching your needs
+                    </p>
+                  )}
+                  {allDoctors.length === 0 && !loadingAll && (
+                    <p className="text-center text-muted-foreground mt-6">
+                      No doctors registered yet. Register as a doctor to appear here!
+                    </p>
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>

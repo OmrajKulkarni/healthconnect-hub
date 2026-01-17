@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
-import { getDoctorById } from '@/data/doctors';
+import { useDoctor } from '@/hooks/useDoctors';
 import { useAuth } from '@/context/AuthContext';
 import { useAppointments } from '@/context/AppointmentContext';
 import { toast } from 'sonner';
@@ -31,8 +31,8 @@ export default function BookingPage() {
   const { user, isAuthenticated } = useAuth();
   const { bookAppointment } = useAppointments();
 
-  // Get doctor data
-  const doctor = doctorId ? getDoctorById(doctorId) : null;
+  // Get doctor data from database
+  const { doctor, loading: loadingDoctor } = useDoctor(doctorId || '');
 
   // State for booking
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -52,6 +52,18 @@ export default function BookingPage() {
           <Button asChild>
             <Link to="/login">Login</Link>
           </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show loading state
+  if (loadingDoctor) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-4">Loading doctor information...</p>
         </div>
       </Layout>
     );
